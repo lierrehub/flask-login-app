@@ -233,9 +233,8 @@ def login():
             password_valid = bcrypt.check_password_hash(check_hash, password)
 
             if real_user and password_valid:
-                # 登录成功后刷新 session，重置失败计数
+                # 登录成功：更新 session，保留 CSRF token
                 _reset_login_attempts(username)
-                session.clear()
                 session.permanent = True
                 session["username"] = username
                 logger.info(
