@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import datetime
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, session
 from flask_bcrypt import Bcrypt
@@ -81,6 +82,67 @@ USERS = {
 # 防时序攻击：启动时生成随机 dummy hash
 _dummy_hash = bcrypt.generate_password_hash(os.urandom(32).hex()).decode("utf-8")
 
+# 账号锁定机制：连续失败次数 → 锁定时间
+_LOGIN_ATTEMPTS = {}  # {username: {"count": int, "locked_until": datetime}}
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION = timedelta(minutes=15)
+
+
+def _check_account_locked(username):
+    """检查账号是否被临时锁定"""
+    record = _LOGIN_ATTEMPTS.get(username)
+    if not record or not record.get("locked_until"):
+        return False, 0
+    if record["locked_until"] > datetime.datetime.now():
+        remaining = int((record["locked_until"] - datetime.datetime.now()).total_seconds())
+        logger.warning("账号 %s 已被锁定（剩余 %d 秒）", username, remaining)
+        return True, remaining
+    return False, 0
+
+
+def _record_failed_attempt(username):
+    """记录登录失败次数，达到阈值则锁定"""
+    now = datetime.datetime.now()
+    record = _LOGIN_ATTEMPTS.get(username)
+    if record:
+        # 如果锁定已过期，重置计数
+        if record.get("locked_until") and record["locked_until"] < now:
+            record["count"] = 1
+            record["locked_until"] = None
+        else:
+            record["count"] += 1
+    else:
+        record = {"count": 1, "locked_until": None}
+        _LOGIN_ATTEMPTS[username] = record
+
+    if record["count"] >= MAX_LOGIN_ATTEMPTS:
+        record["locked_until"] = now + LOCKOUT_DURATION
+        logger.warning(
+            "账号 %s 因连续 %d 次登录失败已被锁定 %d 分钟",
+            username, MAX_LOGIN_ATTEMPTS, int(LOCKOUT_DURATION.total_seconds() / 60)
+        )
+    return record["count"], MAX_LOGIN_ATTEMPTS - record["count"]
+
+
+def _reset_login_attempts(username):
+    """登录成功后重置失败计数"""
+    _LOGIN_ATTEMPTS.pop(username, None)
+
+
+def _check_password_strength(password):
+    """校验密码强度"""
+    if len(password) < 8:
+        return False, "密码长度至少 8 位"
+    if not re.search(r"[A-Z]", password):
+        return False, "密码需包含至少一个大写字母"
+    if not re.search(r"[a-z]", password):
+        return False, "密码需包含至少一个小写字母"
+    if not re.search(r"\d", password):
+        return False, "密码需包含至少一个数字"
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=]", password):
+        return False, "密码需包含至少一个特殊字符"
+    return True, "密码强度合格"
+
 
 def _safe_user(username):
     """返回不包含密码字段的用户信息，防止哈希泄露到模板中"""
@@ -121,7 +183,16 @@ def add_security_headers(response):
 @app.route("/health")
 def health():
     """健康检查端点"""
-    return {"status": "ok", "users": len(USERS)}
+    locked_accounts = sum(
+        1 for r in _LOGIN_ATTEMPTS.values()
+        if r.get("locked_until") and r["locked_until"] > datetime.datetime.now()
+    )
+    return {
+        "status": "ok",
+        "users": len(USERS),
+        "locked_accounts": locked_accounts,
+        "total_login_attempts": len(_LOGIN_ATTEMPTS)
+    }
 
 
 @app.route("/")
@@ -146,20 +217,44 @@ def login():
         elif not re.match(r"^[a-zA-Z0-9_]{3,32}$", username):
             error = "用户名只能包含字母、数字和下划线（3-32位）"
         else:
+            # 检查账号是否被锁定
+            locked, remaining = _check_account_locked(username)
+            if locked:
+                logger.warning(
+                    "被锁账号登录尝试: %s, IP: %s",
+                    username, get_real_ip()
+                )
+                error = f"账号已被锁定，请 {remaining} 秒后再试"
+                return render_template("login.html", error=error)
+
             # 防时序攻击：无论用户名是否存在都执行 bcrypt 验证
             real_user = USERS.get(username)
             check_hash = real_user["password"] if real_user else _dummy_hash
             password_valid = bcrypt.check_password_hash(check_hash, password)
 
             if real_user and password_valid:
-                # 登录成功后刷新 session，防止会话固定攻击
+                # 登录成功后刷新 session，重置失败计数
+                _reset_login_attempts(username)
                 session.clear()
                 session.permanent = True
                 session["username"] = username
-                logger.info("用户 %s 登录成功", username)
+                logger.info(
+                    "用户 %s 登录成功, IP: %s",
+                    username, get_real_ip()
+                )
                 return redirect("/")
             else:
-                error = "用户名或密码错误，请重试"
+                # 记录失败尝试
+                attempt_count, remaining_attempts = _record_failed_attempt(username)
+                client_ip = get_real_ip()
+                logger.warning(
+                    "登录失败: 用户名=%s, IP=%s, 连续失败=%d次",
+                    username, client_ip, attempt_count
+                )
+                if remaining_attempts > 0:
+                    error = f"用户名或密码错误，请重试（还剩 {remaining_attempts} 次机会）"
+                else:
+                    error = f"账号已被锁定，请 {int(LOCKOUT_DURATION.total_seconds() / 60)} 分钟后再试"
 
     return render_template("login.html", error=error)
 
@@ -169,7 +264,7 @@ def logout():
     username = session.get("username")
     session.clear()
     if username:
-        logger.info("用户 %s 已登出", username)
+        logger.info("用户 %s 已登出, IP: %s", username, get_real_ip())
     return redirect("/")
 
 
