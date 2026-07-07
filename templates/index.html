@@ -11,7 +11,10 @@
             <li><span class="info-label">角色：</span>{{ user['role'] }}</li>
             <li><span class="info-label">余额：</span>{{ user['balance'] }}</li>
         </ul>
-        <a class="btn btn-danger" href="/logout">退出登录</a>
+        <form class="logout-form" method="post" action="/logout" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger" type="submit">退出登录</button>
+        </form>
     </div>
 {% else %}
     <div class="card card-center">

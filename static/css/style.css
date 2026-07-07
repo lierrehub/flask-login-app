@@ -202,3 +202,17 @@ a {
     border: 1px solid #ffccc7;
     color: #cf1322;
 }
+
+/* ===== 登出表单 ===== */
+.logout-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+.logout-btn {
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+}

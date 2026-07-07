@@ -107,7 +107,7 @@ def login():
         else:
             # 防时序攻击：无论用户名是否存在都执行 bcrypt 验证
             real_user = USERS.get(username)
-            dummy_hash = "$2b$12$ABCDEFGHIJKLMNOPQRSTUOhash4demoOnly1234567890123"
+            dummy_hash = "$2b$12$AiWcvjXDzaINmqrvl20m9.G..Zoy1PvIzE5NIgkuysC11Q2.OUrB2"
             check_hash = real_user["password"] if real_user else dummy_hash
             password_valid = bcrypt.check_password_hash(check_hash, password)
 
@@ -116,14 +116,14 @@ def login():
                 session.clear()
                 session.permanent = True
                 session["username"] = username
-                return render_template("index.html", user=_safe_user(username))
+                return redirect("/")
             else:
                 error = "用户名或密码错误，请重试"
 
     return render_template("login.html", error=error)
 
 
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
     session.clear()
     return redirect("/")
