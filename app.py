@@ -1,11 +1,17 @@
 import os
 import re
+import logging
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, session
 from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.serving import WSGIRequestHandler
+
+# 隐藏 Werkzeug Server 版本信息
+WSGIRequestHandler.server_version = ""
+WSGIRequestHandler.sys_version = ""
 
 app = Flask(__name__)
 app.secret_key = os.environ.get(
@@ -13,13 +19,6 @@ app.secret_key = os.environ.get(
     os.urandom(64).hex()
 )
 
-# 登录频率限制（基于 IP）
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://",
-)
 
 # CSRF 保护
 csrf = CSRFProtect(app)
@@ -30,10 +29,34 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_PERMANENT"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=1)
 # 仅在明确启用时设置 Secure 标志（需要 HTTPS）
-if os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true":
+secure_mode = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
+if secure_mode:
     app.config["SESSION_COOKIE_SECURE"] = True
 
 bcrypt = Bcrypt(app)
+
+# 日志配置
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
+
+# 登录频率限制（基于 IP，支持代理转发）
+def get_real_ip():
+    """优先从 X-Forwarded-For 获取真实 IP（需反向代理配合）"""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address()
+
+limiter = Limiter(
+    get_real_ip,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 # 用户数据库 - 密码为预生成的 bcrypt 哈希，源码中不包含明文密码
 USERS = {
@@ -54,6 +77,9 @@ USERS = {
         "balance": 100
     }
 }
+
+# 防时序攻击：启动时生成随机 dummy hash
+_dummy_hash = bcrypt.generate_password_hash(os.urandom(32).hex()).decode("utf-8")
 
 
 def _safe_user(username):
@@ -80,7 +106,22 @@ def add_security_headers(response):
         "base-uri 'self'; "
         "frame-ancestors 'none'"
     )
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+    )
+    # 隐藏后端技术信息
+    response.headers.pop("Server", None)
+    # HTTPS 模式下启用 HSTS
+    if secure_mode:
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
     return response
+
+
+@app.route("/health")
+def health():
+    """健康检查端点"""
+    return {"status": "ok", "users": len(USERS)}
 
 
 @app.route("/")
@@ -107,8 +148,7 @@ def login():
         else:
             # 防时序攻击：无论用户名是否存在都执行 bcrypt 验证
             real_user = USERS.get(username)
-            dummy_hash = "$2b$12$AiWcvjXDzaINmqrvl20m9.G..Zoy1PvIzE5NIgkuysC11Q2.OUrB2"
-            check_hash = real_user["password"] if real_user else dummy_hash
+            check_hash = real_user["password"] if real_user else _dummy_hash
             password_valid = bcrypt.check_password_hash(check_hash, password)
 
             if real_user and password_valid:
@@ -116,6 +156,7 @@ def login():
                 session.clear()
                 session.permanent = True
                 session["username"] = username
+                logger.info("用户 %s 登录成功", username)
                 return redirect("/")
             else:
                 error = "用户名或密码错误，请重试"
@@ -125,7 +166,10 @@ def login():
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    username = session.get("username")
     session.clear()
+    if username:
+        logger.info("用户 %s 已登出", username)
     return redirect("/")
 
 
@@ -133,4 +177,5 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", 5000))
+    logger.info("启动服务: %s:%d (debug=%s)", host, port, debug)
     app.run(debug=debug, host=host, port=port)
