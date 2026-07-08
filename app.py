@@ -222,7 +222,7 @@ def health():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """用户注册 - 使用 f-string 拼接 SQL（演示用）"""
+    """用户注册"""
     message = None
     if request.method == "POST":
         username = request.form.get("username", "")
@@ -232,11 +232,11 @@ def register():
 
         conn = sqlite3.connect("data/users.db")
         c = conn.cursor()
-        # 使用 f-string 拼接 SQL（注意：存在 SQL 注入风险）
-        sql = f"INSERT INTO users (username, password, email, phone) VALUES ('{username}', '{password}', '{email}', '{phone}')"
+        # 使用参数化查询，防止 SQL 注入
+        sql = "INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)"
         logger.info("执行 SQL: %s", sql)
         try:
-            c.execute(sql)
+            c.execute(sql, (username, password, email, phone))
             conn.commit()
             message = "注册成功，请登录"
         except Exception as e:
@@ -252,19 +252,19 @@ def register():
 
 @app.route("/search")
 def search():
-    """搜索用户 - 使用 f-string 拼接 SQL（演示用）"""
+    """搜索用户"""
     keyword = request.args.get("keyword", "")
     results = []
     if keyword:
         conn = sqlite3.connect("data/users.db")
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        # 使用 f-string 拼接 SQL（注意：存在 SQL 注入风险）
-        sql = f"SELECT * FROM users WHERE username LIKE '%{keyword}%' OR email LIKE '%{keyword}%'"
-        logger.info("执行 SQL: %s", sql)
-        print(f"[SQL] {sql}")
+        # 使用参数化查询，防止 SQL 注入
+        sql = "SELECT * FROM users WHERE username LIKE ? OR email LIKE ?"
+        like_param = f"%{keyword}%"
+        logger.info("执行 SQL: %s (参数: %s)", sql, like_param)
         try:
-            c.execute(sql)
+            c.execute(sql, (like_param, like_param))
             rows = c.fetchall()
             results = [{"id": r["id"], "username": r["username"], "email": r["email"], "phone": r["phone"]} for r in rows]
         except Exception as e:
