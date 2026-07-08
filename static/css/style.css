@@ -203,6 +203,12 @@ a {
     color: #cf1322;
 }
 
+.alert-success {
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    color: #389e0d;
+}
+
 /* ===== 登出表单 ===== */
 .logout-form {
     display: inline;
@@ -215,4 +221,31 @@ a {
     cursor: pointer;
     font-size: 14px;
     font-family: inherit;
+}
+
+/* ===== 搜索表格 ===== */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.table th, .table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+}
+
+.table tr:hover {
+    background: #f5f7ff;
+}
+
+.table td {
+    color: #333;
 }

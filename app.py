@@ -1,5 +1,6 @@
 import os
 import re
+import sqlite3
 import logging
 import datetime
 from datetime import timedelta
@@ -180,6 +181,30 @@ def add_security_headers(response):
     return response
 
 
+# ===== SQLite 数据库初始化 =====
+
+def init_db():
+    """初始化 SQLite 数据库，创建 users 表并插入默认用户"""
+    os.makedirs("data", exist_ok=True)
+    conn = sqlite3.connect("data/users.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            email TEXT,
+            phone TEXT
+        )
+    """)
+    # 插入默认用户，使用 INSERT OR IGNORE 防止重复
+    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('admin', 'admin123', 'admin@example.com', '13800138000')")
+    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('alice', 'alice2025', 'alice@example.com', '13900139001')")
+    conn.commit()
+    conn.close()
+    logger.info("数据库初始化完成: data/users.db")
+
+
 @app.route("/health")
 def health():
     """健康检查端点"""
@@ -195,11 +220,68 @@ def health():
     }
 
 
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """用户注册 - 使用 f-string 拼接 SQL（演示用）"""
+    message = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        email = request.form.get("email", "")
+        phone = request.form.get("phone", "")
+
+        conn = sqlite3.connect("data/users.db")
+        c = conn.cursor()
+        # 使用 f-string 拼接 SQL（注意：存在 SQL 注入风险）
+        sql = f"INSERT INTO users (username, password, email, phone) VALUES ('{username}', '{password}', '{email}', '{phone}')"
+        logger.info("执行 SQL: %s", sql)
+        try:
+            c.execute(sql)
+            conn.commit()
+            message = "注册成功，请登录"
+        except Exception as e:
+            message = f"注册失败: {e}"
+        finally:
+            conn.close()
+
+        if message == "注册成功，请登录":
+            return render_template("login.html", success=message)
+
+    return render_template("register.html", message=message)
+
+
+@app.route("/search")
+def search():
+    """搜索用户 - 使用 f-string 拼接 SQL（演示用）"""
+    keyword = request.args.get("keyword", "")
+    results = []
+    if keyword:
+        conn = sqlite3.connect("data/users.db")
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        # 使用 f-string 拼接 SQL（注意：存在 SQL 注入风险）
+        sql = f"SELECT * FROM users WHERE username LIKE '%{keyword}%' OR email LIKE '%{keyword}%'"
+        logger.info("执行 SQL: %s", sql)
+        print(f"[SQL] {sql}")
+        try:
+            c.execute(sql)
+            rows = c.fetchall()
+            results = [{"id": r["id"], "username": r["username"], "email": r["email"], "phone": r["phone"]} for r in rows]
+        except Exception as e:
+            logger.error("搜索出错: %s", e)
+        finally:
+            conn.close()
+
+    username = session.get("username")
+    user_info = _safe_user(username)
+    return render_template("index.html", user=user_info, results=results, keyword=keyword)
+
+
 @app.route("/")
 def index():
     username = session.get("username")
     user_info = _safe_user(username)
-    return render_template("index.html", user=user_info)
+    return render_template("index.html", user=user_info, results=None, keyword="")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -268,6 +350,7 @@ def logout():
 
 
 if __name__ == "__main__":
+    init_db()
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", 5000))
