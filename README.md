@@ -41,15 +41,17 @@
 | 🌐 **代理 IP 兼容** | X-Forwarded-For 获取真实客户端 IP |
 | 🚫 **Server 头隐藏** | 不泄露 Werkzeug/Python 版本信息 |
 | 🏥 **健康检查端点** | `GET /health` 返回用户数、锁定账号数 |
+| 📸 **头像上传** | 上传后导航栏和首页同步显示头像 |
 
 ### 功能
 
 | 路由 | 方法 | 说明 |
 |------|------|------|
-| `/` | GET | 首页，登录后显示用户信息 |
+| `/` | GET | 首页，登录后显示用户信息 + 头像 |
 | `/login` | GET/POST | 用户登录（bcrypt + CSRF + 限流 + 账号锁定） |
 | `/register` | GET/POST | 用户注册（参数化查询防SQL注入） |
 | `/search` | GET | 搜索用户（参数化查询防SQL注入） |
+| `/upload` | GET/POST | 用户头像上传（16MB限制，保留原始文件名） |
 | `/logout` | POST | 安全登出（CSRF 保护） |
 | `/health` | GET | 健康检查端点 |
 
