@@ -312,6 +312,8 @@ def upload():
                 save_path = os.path.join(UPLOAD_FOLDER, filename)
                 f.save(save_path)
                 file_url = url_for("static", filename=f"uploads/{filename}")
+                # 将头像文件名存入 session
+                session["avatar"] = filename
                 message = "上传成功"
                 logger.info("用户 %s 上传文件: %s", username, filename)
 

@@ -11,6 +11,9 @@
         <div class="nav-brand">用户管理系统</div>
         <div class="nav-menu">
             {% if session.get('username') %}
+                {% if session.get('avatar') %}
+                <img src="{{ url_for('static', filename='uploads/' + session['avatar']) }}" alt="头像" class="nav-avatar">
+                {% endif %}
                 <span class="nav-item">欢迎，{{ session['username'] }}</span>
                 <a class="nav-link" href="/upload">上传头像</a>
                 <form class="logout-form" method="post" action="/logout">
