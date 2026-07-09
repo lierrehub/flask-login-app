@@ -12,6 +12,7 @@
         <div class="nav-menu">
             {% if session.get('username') %}
                 <span class="nav-item">欢迎，{{ session['username'] }}</span>
+                <a class="nav-link" href="/upload">上传头像</a>
                 <form class="logout-form" method="post" action="/logout">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="nav-link logout-btn" type="submit">退出</button>

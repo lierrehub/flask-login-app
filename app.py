@@ -4,7 +4,7 @@ import sqlite3
 import logging
 import datetime
 from datetime import timedelta
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, url_for
 from flask_bcrypt import Bcrypt
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -36,6 +36,11 @@ if secure_mode:
     app.config["SESSION_COOKIE_SECURE"] = True
 
 bcrypt = Bcrypt(app)
+
+# 文件上传配置
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+UPLOAD_FOLDER = os.path.join(app.static_folder, "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # 日志配置
 logging.basicConfig(
@@ -282,6 +287,35 @@ def index():
     username = session.get("username")
     user_info = _safe_user(username)
     return render_template("index.html", user=user_info, results=None, keyword="")
+
+
+@app.route("/upload", methods=["GET", "POST"])
+def upload():
+    """用户头像上传"""
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
+
+    message = None
+    file_url = None
+    filename = None
+
+    if request.method == "POST":
+        if "file" not in request.files:
+            message = "没有选择文件"
+        else:
+            f = request.files["file"]
+            if f.filename == "":
+                message = "没有选择文件"
+            else:
+                filename = f.filename
+                save_path = os.path.join(UPLOAD_FOLDER, filename)
+                f.save(save_path)
+                file_url = url_for("static", filename=f"uploads/{filename}")
+                message = "上传成功"
+                logger.info("用户 %s 上传文件: %s", username, filename)
+
+    return render_template("upload.html", message=message, file_url=file_url, filename=filename)
 
 
 @app.route("/login", methods=["GET", "POST"])

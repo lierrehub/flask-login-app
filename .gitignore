@@ -20,6 +20,9 @@ instance/
 *.sqlite
 *.sqlite3
 
+# 用户上传文件
+static/uploads/
+
 # 日志文件
 *.log
 /logs/

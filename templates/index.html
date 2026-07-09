@@ -11,10 +11,12 @@
             <li><span class="info-label">角色：</span>{{ user['role'] }}</li>
             <li><span class="info-label">余额：</span>{{ user['balance'] }}</li>
         </ul>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <form class="logout-form" method="post" action="/logout" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-danger" type="submit">退出登录</button>
         </form>
+        <a class="btn btn-primary" href="/upload" style="text-decoration: none;">上传头像</a>
     </div>
 
     <!-- 搜索功能 -->
