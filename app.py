@@ -308,14 +308,31 @@ def upload():
             if f.filename == "":
                 message = "没有选择文件"
             else:
-                filename = f.filename
-                save_path = os.path.join(UPLOAD_FOLDER, filename)
-                f.save(save_path)
-                file_url = url_for("static", filename=f"uploads/{filename}")
-                # 将头像文件名存入 session
-                session["avatar"] = filename
-                message = "上传成功"
-                logger.info("用户 %s 上传文件: %s", username, filename)
+                # 检查文件扩展名
+                allowed_extensions = {"png", "jpg", "jpeg", "gif", "webp"}
+                ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+                if ext not in allowed_extensions:
+                    message = "只允许上传图片文件（png、jpg、jpeg、gif、webp）"
+                elif f.content_type not in ["image/png", "image/jpeg", "image/gif", "image/webp"]:
+                    message = f"不支持的文件类型: {f.content_type}"
+                else:
+                    # 清理文件名：移除路径分隔符等不安全字符
+                    import secrets
+                    safe_name = re.sub(r"[^a-zA-Z0-9_.\-]", "", f.filename)
+                    safe_name = safe_name if safe_name else f"avatar_{secrets.token_hex(4)}.{ext}"
+                    # 防止重名覆盖
+                    save_path = os.path.join(UPLOAD_FOLDER, safe_name)
+                    counter = 1
+                    while os.path.exists(save_path):
+                        name_part = safe_name.rsplit(".", 1)[0]
+                        safe_name = f"{name_part}_{counter}.{ext}"
+                        save_path = os.path.join(UPLOAD_FOLDER, safe_name)
+                        counter += 1
+                    f.save(save_path)
+                    file_url = url_for("static", filename=f"uploads/{safe_name}")
+                    session["avatar"] = safe_name
+                    message = "上传成功"
+                    logger.info("用户 %s 上传文件: %s (类型: %s)", username, safe_name, f.content_type)
 
     return render_template("upload.html", message=message, file_url=file_url, filename=filename)
 
