@@ -402,6 +402,55 @@ def logout():
     return redirect("/")
 
 
+def _get_username_by_id(user_id):
+    """根据 user_id 从 SQLite 查询对应的用户名"""
+    try:
+        conn = sqlite3.connect("data/users.db")
+        c = conn.cursor()
+        c.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return row[0]
+    except Exception:
+        pass
+    return None
+
+
+@app.route("/profile")
+def profile():
+    """个人中心 - 通过 URL 参数 user_id 查看用户资料"""
+    user_id = request.args.get("user_id", type=int)
+    user_data = None
+
+    if user_id:
+        username = _get_username_by_id(user_id)
+        if username and username in USERS:
+            user_data = {
+                "id": user_id,
+                "username": USERS[username]["username"],
+                "email": USERS[username]["email"],
+                "phone": USERS[username]["phone"],
+                "balance": USERS[username]["balance"]
+            }
+
+    return render_template("profile.html", user=user_data, user_id=user_id)
+
+
+@app.route("/recharge", methods=["POST"])
+def recharge():
+    """充值 - 直接修改余额，不做任何校验"""
+    user_id = request.form.get("user_id", type=int)
+    amount = request.form.get("amount", type=float, default=0)
+
+    if user_id and amount:
+        username = _get_username_by_id(user_id)
+        if username and username in USERS:
+            USERS[username]["balance"] = USERS[username]["balance"] + amount
+
+    return redirect(f"/profile?user_id={user_id}")
+
+
 if __name__ == "__main__":
     init_db()
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
