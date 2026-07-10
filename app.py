@@ -68,6 +68,7 @@ limiter = Limiter(
 # 用户数据库 - 密码为预生成的 bcrypt 哈希，源码中不包含明文密码
 USERS = {
     "admin": {
+        "id": 1,
         "username": "admin",
         "password": "$2b$12$.cLDo0EipcOk.1F6EedqdebiMwwCRZHAz84sMRu/6u5qwjE3v9k4e",
         "role": "admin",
@@ -76,6 +77,7 @@ USERS = {
         "balance": 99999
     },
     "alice": {
+        "id": 2,
         "username": "alice",
         "password": "$2b$12$pIqdI5oYxQD/XagaMngLqON5PzAlPqAaTO2WB/w4wyAS/GAZhgqVm",
         "role": "user",
@@ -84,6 +86,12 @@ USERS = {
         "balance": 100
     }
 }
+
+
+def _get_current_user_id(username):
+    """根据用户名获取对应的用户 ID"""
+    user = USERS.get(username)
+    return user["id"] if user else None
 
 # 防时序攻击：启动时生成随机 dummy hash
 _dummy_hash = bcrypt.generate_password_hash(os.urandom(32).hex()).decode("utf-8")
@@ -419,36 +427,52 @@ def _get_username_by_id(user_id):
 
 @app.route("/profile")
 def profile():
-    """个人中心 - 通过 URL 参数 user_id 查看用户资料"""
-    user_id = request.args.get("user_id", type=int)
-    user_data = None
+    """个人中心 - 仅显示当前登录用户的资料"""
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
 
-    if user_id:
-        username = _get_username_by_id(user_id)
-        if username and username in USERS:
-            user_data = {
-                "id": user_id,
-                "username": USERS[username]["username"],
-                "email": USERS[username]["email"],
-                "phone": USERS[username]["phone"],
-                "balance": USERS[username]["balance"]
-            }
+    user = USERS.get(username)
+    if not user:
+        return redirect("/login")
 
-    return render_template("profile.html", user=user_data, user_id=user_id)
+    user_data = {
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"],
+        "phone": user["phone"],
+        "balance": user["balance"]
+    }
+
+    error = request.args.get("error")
+    return render_template("profile.html", user=user_data, error=error)
 
 
 @app.route("/recharge", methods=["POST"])
 def recharge():
-    """充值 - 直接修改余额，不做任何校验"""
-    user_id = request.form.get("user_id", type=int)
+    """充值 - 需要登录，仅限本人，校验金额为正数"""
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
+
+    user = USERS.get(username)
+    if not user:
+        return redirect("/login")
+
     amount = request.form.get("amount", type=float, default=0)
 
-    if user_id and amount:
-        username = _get_username_by_id(user_id)
-        if username and username in USERS:
-            USERS[username]["balance"] = USERS[username]["balance"] + amount
+    # 校验金额必须为正数
+    if amount <= 0:
+        return redirect("/profile?error=invalid_amount")
 
-    return redirect(f"/profile?user_id={user_id}")
+    # 限制单次充值上限
+    if amount > 100000:
+        return redirect("/profile?error=amount_too_large")
+
+    user["balance"] = user["balance"] + amount
+    logger.info("用户 %s 充值 %.2f 元，余额: %.2f", username, amount, user["balance"])
+
+    return redirect("/profile")
 
 
 if __name__ == "__main__":

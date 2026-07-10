@@ -15,7 +15,7 @@
                 <img src="{{ url_for('static', filename='uploads/' + session['avatar']) }}" alt="头像" class="nav-avatar">
                 {% endif %}
                 <span class="nav-item">欢迎，{{ session['username'] }}</span>
-                <a class="nav-link" href="/profile?user_id=1">个人中心</a>
+                <a class="nav-link" href="/profile">个人中心</a>
                 <a class="nav-link" href="/upload">上传头像</a>
                 <form class="logout-form" method="post" action="/logout">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
