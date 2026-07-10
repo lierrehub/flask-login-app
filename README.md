@@ -42,6 +42,7 @@
 | 🚫 **Server 头隐藏** | 不泄露 Werkzeug/Python 版本信息 |
 | 🏥 **健康检查端点** | `GET /health` 返回用户数、锁定账号数 |
 | 📸 **头像上传** | 上传后导航栏和首页同步显示头像 |
+| 🔐 **越权访问防护** | 个人中心仅限本人查看，充值需登录+正数校验 |
 
 ### 功能
 
@@ -51,7 +52,9 @@
 | `/login` | GET/POST | 用户登录（bcrypt + CSRF + 限流 + 账号锁定） |
 | `/register` | GET/POST | 用户注册（参数化查询防SQL注入） |
 | `/search` | GET | 搜索用户（参数化查询防SQL注入） |
-| `/upload` | GET/POST | 用户头像上传（16MB限制，保留原始文件名） |
+| `/upload` | GET/POST | 用户头像上传（16MB限制，扩展名+MIME校验） |
+| `/profile` | GET | 个人中心（需登录，仅限本人） |
+| `/recharge` | POST | 充值（需登录，正数校验，单次上限10万） |
 | `/logout` | POST | 安全登出（CSRF 保护） |
 | `/health` | GET | 健康检查端点 |
 
