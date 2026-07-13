@@ -279,3 +279,37 @@ a {
 .table td {
     color: #333;
 }
+
+/* ===== 动态页面内容 ===== */
+.page-content {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #333;
+}
+
+.page-content h2 {
+    font-size: 20px;
+    color: #1B3A5C;
+    margin: 20px 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #667eea;
+}
+
+.page-content h3 {
+    font-size: 16px;
+    color: #2B579A;
+    margin: 16px 0 8px 0;
+}
+
+.page-content p {
+    margin: 8px 0;
+}
+
+.page-content ul {
+    padding-left: 20px;
+    margin: 8px 0;
+}
+
+.page-content li {
+    margin-bottom: 4px;
+}

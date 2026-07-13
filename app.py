@@ -475,6 +475,32 @@ def recharge():
     return redirect("/profile")
 
 
+@app.route("/page")
+def page():
+    """动态页面加载 - 直接拼接用户输入的路径（演示用）"""
+    name = request.args.get("name", "")
+    page_content = None
+    page_title = name
+
+    if name:
+        # 直接拼接用户输入到路径中，不做任何校验
+        page_path = os.path.join("pages", name)
+
+        if os.path.isfile(page_path):
+            with open(page_path, "r", encoding="utf-8") as f:
+                page_content = f.read()
+        elif os.path.isfile(page_path + ".html"):
+            with open(page_path + ".html", "r", encoding="utf-8") as f:
+                page_content = f.read()
+                page_title = name + ".html"
+        else:
+            page_content = "页面不存在"
+
+    username = session.get("username")
+    user_info = _safe_user(username)
+    return render_template("index.html", user=user_info, page_content=page_content, page_title=page_title, results=None, keyword="")
+
+
 if __name__ == "__main__":
     init_db()
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
