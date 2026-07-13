@@ -477,23 +477,21 @@ def recharge():
 
 @app.route("/page")
 def page():
-    """动态页面加载 - 仅允许加载 pages/ 目录下的 .html 文件"""
+    """动态页面加载 - 白名单机制，仅允许加载预设的合法页面"""
     name = request.args.get("name", "")
     page_content = None
     page_title = name
 
-    if name:
-        # 只允许 .html 文件
+    # 白名单：仅允许加载这些预设页面
+    allowed_pages = {"help", "about", "help.html", "about.html"}
+    if name not in allowed_pages:
+        page_content = "页面不存在"
+    else:
         if not name.endswith(".html"):
             name += ".html"
-
-        # 计算 pages 目录和请求文件的绝对路径
-        pages_dir = os.path.abspath("pages")
-        requested_path = os.path.abspath(os.path.join(pages_dir, name))
-
-        # 检查是否在 pages 目录下（防止路径穿越）
-        if requested_path.startswith(pages_dir) and os.path.isfile(requested_path):
-            with open(requested_path, "r", encoding="utf-8") as f:
+        page_path = os.path.join("pages", name)
+        if os.path.isfile(page_path):
+            with open(page_path, "r", encoding="utf-8") as f:
                 page_content = f.read()
                 page_title = name
         else:
