@@ -26,11 +26,9 @@ app.secret_key = os.environ.get(
 csrf = CSRFProtect(app)
 
 
-# 排除修改密码路由的 CSRF 保护（演示用）
 @app.route("/change-password", methods=["POST"])
-@csrf.exempt
 def change_password():
-    """修改密码 - 不需要验证原密码，不需要CSRF Token"""
+    """修改密码"""
     username = request.form.get("username", "")
     new_password = request.form.get("new_password", "")
 

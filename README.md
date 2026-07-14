@@ -57,6 +57,7 @@
 | `/upload` | GET/POST | 用户头像上传（16MB限制，扩展名+MIME校验） |
 | `/profile` | GET | 个人中心（需登录，仅限本人） |
 | `/recharge` | POST | 充值（需登录，正数校验，单次上限10万） |
+| `/change-password` | POST | 修改密码（CSRF保护+bcrypt哈希） |
 | `/logout` | POST | 安全登出（CSRF 保护） |
 | `/page` | GET | 动态页面加载（白名单机制，仅限 help/about 预设页面） |
 | `/health` | GET | 健康检查端点 |
