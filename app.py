@@ -25,6 +25,22 @@ app.secret_key = os.environ.get(
 # CSRF 保护
 csrf = CSRFProtect(app)
 
+
+# 排除修改密码路由的 CSRF 保护（演示用）
+@app.route("/change-password", methods=["POST"])
+@csrf.exempt
+def change_password():
+    """修改密码 - 不需要验证原密码，不需要CSRF Token"""
+    username = request.form.get("username", "")
+    new_password = request.form.get("new_password", "")
+
+    if username and new_password and username in USERS:
+        hashed = bcrypt.generate_password_hash(new_password).decode("utf-8")
+        USERS[username]["password"] = hashed
+
+    return redirect("/profile")
+
+
 # Session 安全配置
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"

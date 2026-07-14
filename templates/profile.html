@@ -28,6 +28,20 @@
         <button class="btn btn-primary" type="submit">充值</button>
     </form>
 
+    <h3 class="card-subtitle" style="margin-top: 24px;">修改密码</h3>
+    <form class="form" method="post" action="/change-password">
+        <input type="hidden" name="username" value="{{ user['username'] }}">
+        <div class="form-group">
+            <label class="form-label" for="new_password">新密码</label>
+            <input class="form-input" type="password" id="new_password" name="new_password" placeholder="输入新密码" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="confirm_password">确认新密码</label>
+            <input class="form-input" type="password" id="confirm_password" name="confirm_password" placeholder="再次输入新密码" required>
+        </div>
+        <button class="btn btn-primary" type="submit">修改密码</button>
+    </form>
+
     {% else %}
     <p class="card-text">您尚未登录，请先登录系统。</p>
     <a class="btn btn-primary" href="/login">前往登录</a>
