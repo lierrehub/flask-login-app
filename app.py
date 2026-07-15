@@ -546,8 +546,12 @@ def fetch_url():
     return render_template("index.html", user=user_info, fetch_status=status_code, fetch_content=content_preview, fetch_error=error_msg, fetch_url=target_url, results=None, keyword="")
 
 
+# 本机 IP 列表，启动时自动填充
+_HOST_IPS = set()
+
+
 def _is_internal_ip(hostname):
-    """检查主机名是否为内网地址"""
+    """检查主机名是否为内网地址或本机地址"""
     if not hostname:
         return True
     hostname = hostname.lower()
@@ -559,6 +563,9 @@ def _is_internal_ip(hostname):
         ip = socket.gethostbyname(hostname)
     except socket.gaierror:
         return False
+    # 检查是否为本机 IP（启动时获取的本机所有 IP）
+    if ip in _HOST_IPS:
+        return True
     # 检查内网 IP 范围
     if ip.startswith("127.") or ip == "::1":
         return True
@@ -608,6 +615,18 @@ def page():
 
 if __name__ == "__main__":
     init_db()
+    # 获取本机所有 IP 地址，用于 SSRF 防护
+    try:
+        import subprocess as _sp
+        r = _sp.run(["hostname", "-I"], capture_output=True, text=True, timeout=5)
+        if r.stdout:
+            _HOST_IPS.update(r.stdout.strip().split())
+        _HOST_IPS.add(socket.gethostbyname(socket.gethostname()))
+    except Exception:
+        pass
+    _HOST_IPS.discard("")
+    logger.info("本机 IP 列表: %s", _HOST_IPS)
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", 5000))
