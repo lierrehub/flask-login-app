@@ -239,16 +239,7 @@ def init_db():
 @app.route("/health")
 def health():
     """健康检查端点"""
-    locked_accounts = sum(
-        1 for r in _LOGIN_ATTEMPTS.values()
-        if r.get("locked_until") and r["locked_until"] > datetime.datetime.now()
-    )
-    return {
-        "status": "ok",
-        "users": len(USERS),
-        "locked_accounts": locked_accounts,
-        "total_login_attempts": len(_LOGIN_ATTEMPTS)
-    }
+    return {"status": "ok"}
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -519,24 +510,36 @@ def fetch_url():
                 if _is_internal_ip(hostname):
                     error_msg = "不允许访问内网地址"
                 else:
-                    # 第四层：设置 User-Agent，避免被某些服务器拒绝
+                    # 第四层：不跟随重定向，防止重定向到内网
+                    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+                        def redirect_request(self, req, fp, code, msg, headers, newurl):
+                            return None
+                    # 第五层：设置 User-Agent
                     req = urllib.request.Request(
                         target_url,
                         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
                     )
-                    resp = urllib.request.urlopen(req, timeout=10)
+                    opener = urllib.request.build_opener(_NoRedirect)
+                    resp = opener.open(req, timeout=10)
                     code = resp.getcode()
-                    status_code = code if code else "OK"
-                    raw = resp.read()
-                    # 只返回文本类型内容
-                    content_type = resp.headers.get("Content-Type", "")
-                    if "text" in content_type or "json" in content_type or "xml" in content_type or "html" in content_type:
-                        content_preview = raw.decode("utf-8", errors="replace")[:5000]
+                    # 检查是否是重定向响应
+                    if 300 <= code < 400:
+                        error_msg = f"目标服务器返回了重定向（{code}），已拦截"
                     else:
-                        content_preview = f"[二进制内容，Content-Type: {content_type}，大小: {len(raw)} 字节]"
+                        status_code = code if code else "OK"
+                        raw = resp.read()
+                        # 只返回文本类型内容
+                        content_type = resp.headers.get("Content-Type", "")
+                        if "text" in content_type or "json" in content_type or "xml" in content_type or "html" in content_type:
+                            content_preview = raw.decode("utf-8", errors="replace")[:5000]
+                        else:
+                            content_preview = f"[二进制内容，Content-Type: {content_type}，大小: {len(raw)} 字节]"
             except urllib.error.HTTPError as e:
-                status_code = e.code
-                content_preview = str(e.reason)
+                if 300 <= e.code < 400:
+                    error_msg = f"目标服务器返回了重定向（{e.code}），已拦截"
+                else:
+                    status_code = e.code
+                    content_preview = str(e.reason)
             except urllib.error.URLError as e:
                 error_msg = f"无法访问该 URL: {e.reason}"
             except Exception as e:
