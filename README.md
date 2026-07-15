@@ -21,6 +21,7 @@
 | 🟠 高危 | 无登录限流 | Flask-Limiter 10次/分钟 |
 | 🟠 高危 | SQL 注入（注册 + 搜索） | 参数化查询（? 占位符） |
 | 🟠 高危 | 文件包含 + 路径穿越（/page） | 白名单机制，仅允许预设页面 |
+| 🟠 高危 | SSRF 服务端请求伪造（/fetch-url） | 协议限制 + 内网 IP 拦截 |
 | 🟡 中危 | CSRF 会话清除 | 登录后保留 CSRF Token |
 | 🟡 中危 | 无 CSRF 保护 | Flask-WTF 全路由 |
 | 🟡 中危 | Cookie 缺安全标志 | HttpOnly + SameSite + 1h |
@@ -45,6 +46,7 @@
 | 📸 **头像上传** | 上传后导航栏和首页同步显示头像 |
 | 🔐 **越权访问防护** | 个人中心仅限本人查看，充值需登录+正数校验 |
 | 📄 **动态页面加载** | 白名单机制，仅允许 help/about 预设页面，杜绝文件包含与路径穿越 |
+| 🌐 **URL 抓取防护** | 仅允许 http/https 协议，拦截内网 IP 和 file:// 协议，防 SSRF 攻击 |
 
 ### 功能
 
@@ -60,6 +62,7 @@
 | `/change-password` | POST | 修改密码（CSRF保护+bcrypt哈希） |
 | `/logout` | POST | 安全登出（CSRF 保护） |
 | `/page` | GET | 动态页面加载（白名单机制，仅限 help/about 预设页面） |
+| `/fetch-url` | POST | URL 抓取（协议限制 + 内网 IP 拦截，防 SSRF） |
 | `/health` | GET | 健康检查端点 |
 
 ---
