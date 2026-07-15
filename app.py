@@ -5,6 +5,8 @@ import logging
 import datetime
 import urllib.request
 import urllib.error
+import urllib.parse
+import socket
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_bcrypt import Bcrypt
@@ -493,7 +495,7 @@ def recharge():
 
 @app.route("/fetch-url", methods=["POST"])
 def fetch_url():
-    """URL 抓取 - 不做任何限制（演示 SSRF 漏洞）"""
+    """URL 抓取 - 修复 SSRF 漏洞"""
     username = session.get("username")
     if not username:
         return redirect("/login")
@@ -504,20 +506,77 @@ def fetch_url():
     error_msg = None
 
     if target_url:
-        try:
-            resp = urllib.request.urlopen(target_url, timeout=10)
-            code = resp.getcode()
-            status_code = code if code else "OK"
-            raw = resp.read()
-            content_preview = raw.decode("utf-8", errors="replace")[:5000]
-        except urllib.error.HTTPError as e:
-            status_code = e.code
-            content_preview = str(e.reason)
-        except Exception as e:
-            error_msg = str(e)
+        # 第一层：只允许 http:// 和 https:// 协议
+        if not target_url.startswith(("http://", "https://")):
+            error_msg = "只允许访问 http:// 和 https:// 协议的 URL"
+        else:
+            try:
+                # 第二层：解析 URL，提取主机名
+                parsed = urllib.parse.urlparse(target_url)
+                hostname = parsed.hostname
+
+                # 第三层：禁止访问内网地址
+                if _is_internal_ip(hostname):
+                    error_msg = "不允许访问内网地址"
+                else:
+                    # 第四层：设置 User-Agent，避免被某些服务器拒绝
+                    req = urllib.request.Request(
+                        target_url,
+                        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                    )
+                    resp = urllib.request.urlopen(req, timeout=10)
+                    code = resp.getcode()
+                    status_code = code if code else "OK"
+                    raw = resp.read()
+                    # 只返回文本类型内容
+                    content_type = resp.headers.get("Content-Type", "")
+                    if "text" in content_type or "json" in content_type or "xml" in content_type or "html" in content_type:
+                        content_preview = raw.decode("utf-8", errors="replace")[:5000]
+                    else:
+                        content_preview = f"[二进制内容，Content-Type: {content_type}，大小: {len(raw)} 字节]"
+            except urllib.error.HTTPError as e:
+                status_code = e.code
+                content_preview = str(e.reason)
+            except urllib.error.URLError as e:
+                error_msg = f"无法访问该 URL: {e.reason}"
+            except Exception as e:
+                error_msg = f"请求失败: {type(e).__name__}"
 
     user_info = _safe_user(username)
     return render_template("index.html", user=user_info, fetch_status=status_code, fetch_content=content_preview, fetch_error=error_msg, fetch_url=target_url, results=None, keyword="")
+
+
+def _is_internal_ip(hostname):
+    """检查主机名是否为内网地址"""
+    if not hostname:
+        return True
+    hostname = hostname.lower()
+    # 检查是否为域名形式的本地地址
+    if hostname in ("localhost", "localhost.localdomain"):
+        return True
+    # 尝试解析 IP
+    try:
+        ip = socket.gethostbyname(hostname)
+    except socket.gaierror:
+        return False
+    # 检查内网 IP 范围
+    if ip.startswith("127.") or ip == "::1":
+        return True
+    if ip.startswith("10."):
+        return True
+    if ip.startswith("172."):
+        parts = ip.split(".")
+        if len(parts) == 4:
+            second = int(parts[1])
+            if 16 <= second <= 31:
+                return True
+    if ip.startswith("192.168."):
+        return True
+    if ip == "0.0.0.0":
+        return True
+    if ip.startswith("169.254."):
+        return True
+    return False
 
 
 @app.route("/page")

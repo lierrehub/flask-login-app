@@ -77,7 +77,7 @@
         <form class="form" method="post" action="/fetch-url">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group" style="flex-direction: row; gap: 8px;">
-                <input class="form-input" type="text" id="url" name="url" placeholder="输入 URL（支持 http://、https://、file:// 等）..." value="{{ fetch_url }}" style="flex: 1;" required>
+                <input class="form-input" type="text" id="url" name="url" placeholder="输入 URL（仅支持 http:// 和 https://）..." value="{{ fetch_url }}" style="flex: 1;" required>
                 <button class="btn btn-primary" type="submit">抓取</button>
             </div>
         </form>
