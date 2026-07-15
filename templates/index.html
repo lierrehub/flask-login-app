@@ -83,7 +83,7 @@
         </form>
     </div>
 
-    {% if fetch_status or fetch_error %}
+    {% if fetch_status or fetch_error or fetch_content %}
     <div class="card">
         <h3 class="card-subtitle">抓取结果</h3>
         {% if fetch_error %}

@@ -506,7 +506,8 @@ def fetch_url():
     if target_url:
         try:
             resp = urllib.request.urlopen(target_url, timeout=10)
-            status_code = resp.getcode()
+            code = resp.getcode()
+            status_code = code if code else "OK"
             raw = resp.read()
             content_preview = raw.decode("utf-8", errors="replace")[:5000]
         except urllib.error.HTTPError as e:
