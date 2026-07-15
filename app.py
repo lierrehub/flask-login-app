@@ -622,11 +622,17 @@ if __name__ == "__main__":
         if r.stdout:
             _HOST_IPS.update(r.stdout.strip().split())
         _HOST_IPS.add(socket.gethostbyname(socket.gethostname()))
+        # 获取公网 IP
+        try:
+            r2 = _sp.run(["curl", "-s", "ifconfig.me"], capture_output=True, text=True, timeout=5)
+            if r2.stdout and r2.stdout.strip():
+                _HOST_IPS.add(r2.stdout.strip())
+        except Exception:
+            pass
     except Exception:
         pass
     _HOST_IPS.discard("")
     logger.info("本机 IP 列表: %s", _HOST_IPS)
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", 5000))
