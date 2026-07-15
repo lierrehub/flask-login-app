@@ -71,6 +71,30 @@
     </div>
     {% endif %}
 
+    <!-- URL 抓取功能 -->
+    <div class="card">
+        <h3 class="card-subtitle">URL 抓取</h3>
+        <form class="form" method="post" action="/fetch-url">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group" style="flex-direction: row; gap: 8px;">
+                <input class="form-input" type="text" id="url" name="url" placeholder="输入 URL（支持 http://、https://、file:// 等）..." value="{{ fetch_url }}" style="flex: 1;" required>
+                <button class="btn btn-primary" type="submit">抓取</button>
+            </div>
+        </form>
+    </div>
+
+    {% if fetch_status or fetch_error %}
+    <div class="card">
+        <h3 class="card-subtitle">抓取结果</h3>
+        {% if fetch_error %}
+        <div class="alert alert-error">错误：{{ fetch_error }}</div>
+        {% else %}
+        <p><strong>状态码：</strong>{{ fetch_status }}</p>
+        <div class="fetch-content-box"><pre>{{ fetch_content }}</pre></div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     {% if page_content %}
     <div class="card">
         <h3 class="card-subtitle">动态页面 - {{ page_title }}</h3>

@@ -313,3 +313,23 @@ a {
 .page-content li {
     margin-bottom: 4px;
 }
+
+/* ===== URL 抓取结果 ===== */
+.fetch-content-box {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.fetch-content-box pre {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 9pt;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+}

@@ -3,6 +3,8 @@ import re
 import sqlite3
 import logging
 import datetime
+import urllib.request
+import urllib.error
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_bcrypt import Bcrypt
@@ -487,6 +489,34 @@ def recharge():
     logger.info("用户 %s 充值 %.2f 元，余额: %.2f", username, amount, user["balance"])
 
     return redirect("/profile")
+
+
+@app.route("/fetch-url", methods=["POST"])
+def fetch_url():
+    """URL 抓取 - 不做任何限制（演示 SSRF 漏洞）"""
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
+
+    target_url = request.form.get("url", "")
+    status_code = None
+    content_preview = None
+    error_msg = None
+
+    if target_url:
+        try:
+            resp = urllib.request.urlopen(target_url, timeout=10)
+            status_code = resp.getcode()
+            raw = resp.read()
+            content_preview = raw.decode("utf-8", errors="replace")[:5000]
+        except urllib.error.HTTPError as e:
+            status_code = e.code
+            content_preview = str(e.reason)
+        except Exception as e:
+            error_msg = str(e)
+
+    user_info = _safe_user(username)
+    return render_template("index.html", user=user_info, fetch_status=status_code, fetch_content=content_preview, fetch_error=error_msg, fetch_url=target_url, results=None, keyword="")
 
 
 @app.route("/page")
