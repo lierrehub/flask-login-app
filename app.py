@@ -563,16 +563,30 @@ def ping():
     error = None
 
     if request.method == "POST":
-        ip = request.form.get("ip", "")
+        ip = request.form.get("ip", "").strip()
         if ip:
-            command = f"ping -c 3 {ip}"
-            try:
-                result = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, timeout=30)
-                output = result.decode("utf-8", errors="replace")
-            except subprocess.CalledProcessError as e:
-                output = e.output.decode("utf-8", errors="replace") if e.output else str(e)
-            except Exception as e:
-                error = str(e)
+            # 验证输入：只允许合法的 IP 地址或域名
+            is_valid_ip = re.match(r"^[a-zA-Z0-9.\-]+$", ip) and "." in ip
+            if not is_valid_ip:
+                error = "无效的 IP 地址或域名格式"
+            else:
+                command = f"ping -c 3 {ip}"
+                try:
+                    # 使用列表参数形式，禁止 shell=True 防止命令注入
+                    result = subprocess.check_output(
+                        ["ping", "-c", "3", ip],
+                        stderr=subprocess.STDOUT,
+                        timeout=30
+                    )
+                    output = result.decode("utf-8", errors="replace")
+                except subprocess.CalledProcessError as e:
+                    output = e.output.decode("utf-8", errors="replace") if e.output else str(e)
+                except subprocess.TimeoutExpired:
+                    error = "Ping 超时（30秒）"
+                except FileNotFoundError:
+                    error = "系统中未找到 ping 命令"
+                except Exception as e:
+                    error = str(e)
 
     return render_template("ping.html", command=command, output=output, error=error)
 
