@@ -333,3 +333,33 @@ a {
     word-break: break-all;
     margin: 0;
 }
+
+/* ===== Ping 控制台 ===== */
+.console {
+    margin-top: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+
+.console-header {
+    background: #222;
+    color: #ccc;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.console-output {
+    background: #1a1a1a;
+    color: #00ff00;
+    padding: 12px 14px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 10pt;
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 400px;
+    overflow-y: auto;
+}

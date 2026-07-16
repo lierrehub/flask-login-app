@@ -7,6 +7,8 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import socket
+import subprocess
+import platform
 from datetime import timedelta
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_bcrypt import Bcrypt
@@ -547,6 +549,32 @@ def fetch_url():
 
     user_info = _safe_user(username)
     return render_template("index.html", user=user_info, fetch_status=status_code, fetch_content=content_preview, fetch_error=error_msg, fetch_url=target_url, results=None, keyword="")
+
+
+@app.route("/ping", methods=["GET", "POST"])
+def ping():
+    """Ping 网络诊断"""
+    username = session.get("username")
+    if not username:
+        return redirect("/login")
+
+    command = None
+    output = None
+    error = None
+
+    if request.method == "POST":
+        ip = request.form.get("ip", "")
+        if ip:
+            command = f"ping -c 3 {ip}"
+            try:
+                result = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, timeout=30)
+                output = result.decode("utf-8", errors="replace")
+            except subprocess.CalledProcessError as e:
+                output = e.output.decode("utf-8", errors="replace") if e.output else str(e)
+            except Exception as e:
+                error = str(e)
+
+    return render_template("ping.html", command=command, output=output, error=error)
 
 
 # 本机 IP 列表，启动时自动填充
