@@ -154,6 +154,14 @@ a {
     box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
 }
 
+.form-textarea {
+    min-height: 200px;
+    resize: vertical;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 10pt;
+    line-height: 1.5;
+}
+
 /* ===== 按钮 ===== */
 .btn {
     display: inline-block;
