@@ -661,7 +661,7 @@ def page():
 
 @app.route("/xml-import", methods=["GET", "POST"])
 def xml_import():
-    """XML 数据导入 - 支持 XXE 外部实体注入"""
+    """XML 数据导入"""
     username = session.get("username")
     if not username:
         return redirect("/login")
@@ -674,23 +674,7 @@ def xml_import():
 
         if xml_data:
             try:
-                q = chr(34)
-                sq = chr(39)
-                entity_re = re.compile('<!ENTITY\\s+(\\w+)\\s+SYSTEM\\s+[' + q + sq + '](\\S+?)[' + q + sq + ']')
-                matches = entity_re.findall(xml_data)
-
-                file_contents = {}
-                for entity_name, filepath in matches:
-                    try:
-                        local_path = filepath[7:] if filepath.startswith("file://") else filepath
-                        with open(local_path, "r", encoding="utf-8") as f:
-                            content = f.read()
-                        file_contents[filepath] = content
-                        xml_data = xml_data.replace('&' + entity_name + ';', content)
-                    except Exception as e:
-                        file_contents[filepath] = "[读取失败: " + str(e) + "]"
-                        xml_data = xml_data.replace('&' + entity_name + ';', "[无法读取: " + filepath + "]")
-
+                # 安全解析 XML：禁用外部实体解析，防止 XXE 攻击
                 import xml.etree.ElementTree as ET
                 root = ET.fromstring(xml_data)
                 users = []
@@ -699,7 +683,7 @@ def xml_import():
                     email = user_node.findtext("email", "")
                     users.append({"name": name, "email": email})
 
-                result = {"status": "ok", "users": users, "files_read": list(file_contents.keys())}
+                result = {"status": "ok", "users": users}
             except ET.ParseError as e:
                 error = "XML 解析失败: " + str(e)
             except Exception as e:
